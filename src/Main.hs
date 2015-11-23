@@ -1,6 +1,4 @@
-import System.Environment
-
-module Main where
+import           System.Environment
 
 main :: IO ()
 main = getArgs >>= print . haqify . head
