@@ -2,92 +2,113 @@ module Lists (
 
 ) where
 
+import           Control.Arrow
+import           Prelude       hiding (last, length, reverse)
+import qualified Prelude       as P
+import qualified System.Random as R
+
+-- P01
 last :: [a] -> Maybe a
 last [] = Nothing
-last [x] = Just x
-last (x:xs) = Lists.last xs
+last [a] = Just a
+last (a:as) = last as
 
+-- P02
 penultimate :: [a] -> Maybe a
-penultimate [] = Nothing
-penultimate [x] = Nothing
-penultimate [x, y] = Just x
-penultimate (x:xs) = penultimate xs
+penultimate as
+  | P.length as < 2 = Nothing
+  | otherwise = Just $ (P.last . init) as
 
+-- P03
 nth :: Int -> [a] -> Maybe a
 nth _ [] = Nothing
-nth 0 xs = Just $ head xs
-nth n ys@(x:xs) = if n < 0 || n >= Prelude.length ys then Nothing else nth (n-1) xs
+nth n as | n < 1 || n > P.length as = Nothing
+nth 1 as = Just $ head as
+nth n (a:as) = nth (n-1) as
 
+-- P04
 length :: [a] -> Int
-length = foldr (\x y -> 1 + y) 0
+length = foldr (curry (uncurry (+) . first (const 1))) 0
 
+-- P05
 reverse :: [a] -> [a]
 reverse [] = []
-reverse (x:xs) = Lists.reverse xs ++ [x]
+reverse (a:as) = reverse as ++ [a]
 
+-- P06
 isPalindrome :: (Eq a) => [a] -> Bool
-isPalindrome xs = xs == Lists.reverse xs
+isPalindrome as = as == reverse as
 
+-- P07
 flatten :: [[a]] -> [a]
 flatten = foldr (++) []
 
+-- P08
 compress :: (Eq a) => [a] -> [a]
 compress [] = []
-compress [x] = [x]
-compress (x:y:ys)
-  | x == y = compress yys
-  | x /= y = x : compress yys
-  where yys = y : ys
+compress as = foldr (\a b -> if a == head b then b else a:b) [] as
 
+-- P09
 pack :: (Eq a) => [a] -> [[a]]
 pack [] = []
-pack xs = let t = span (head xs ==) xs
-          in fst t : pack (snd t)
+pack as = uncurry (:) $ second pack $ span (head as ==) as
 
+-- P10, P11
 encode :: (Eq a) => [a] -> [(a,Int)]
-encode = fmap (\x -> (head x, Prelude.length x)) . pack
+encode = fmap (head &&& P.length) . pack
 
+-- P12
 decode :: [(a,Int)] -> [a]
-decode = flip (>>=) (\x -> replicate (snd x) (fst x))
+decode = (=<<) (uncurry (flip replicate))
 
+-- P13
 encodeDirect :: (Eq a) => [a] -> [(a,Int)]
 encodeDirect [] = []
-encodeDirect xs =
-  let t = span (head xs ==) xs
-  in (head (fst t), Prelude.length (fst t)) : encodeDirect (snd t)
+encodeDirect as = uncurry (:) $
+                  (head &&& P.length) *** encodeDirect $
+                  span (head as ==) as
 
+-- P14, P15
 duplicate :: Int -> [a] -> [a]
 duplicate _ [] = []
 duplicate 0 _ = []
-duplicate n xs = xs >>= replicate n
+duplicate n as = as >>= replicate n
 
+-- P16
 dropn :: Int -> [a] -> [a]
 dropn _ [] = []
-dropn n xs = if n < 1 then xs
-             else fst <$> filter (\t -> mod (snd t) n == 0) (zip xs [1,2..])
+dropn n as
+  | n < 1 = as
+  | otherwise = fst <$> filter ((0 ==) . mod n . snd) (zip as [1,2..])
 
+  -- P17
 split :: Int -> [a] -> ([a],[a])
-split n xs
-  | n < 1 = ([], xs)
-  | n <= Prelude.length xs = (take n xs, drop n xs)
-  | n > Prelude.length xs = (xs, [])
+split n as
+  | n < 1 = ([], as)
+  | n < len = (take n as, drop n as)
+  | n >= len = (as, [])
+  where len = P.length as
 
+  -- P18
 slice :: Int -> Int -> [a] -> [a]
 slice n m = fst . split (m-n) . snd. split n
 
+-- P19
 rotate :: Int -> [a] -> [a]
-rotate n xs = let t = split n xs
-              in snd t ++ fst t
+rotate n = uncurry (++) . (snd &&& fst) . split n
 
+-- P20
 removeAt :: Int -> [a] -> [a]
-removeAt n xs = let t = split n xs
-                    st = snd t
-                in fst t ++ if not (null st) then tail st else []
+removeAt n as
+  | null (snd t) = fst t
+  | otherwise = uncurry (++) $ (fst &&& tail . snd) t
+  where t = split (n-1) as
 
+  -- P21
 insertAt :: Int -> a -> [a] -> [a]
-insertAt n x xs = let t = split n xs
-                  in fst t ++ (x : snd t)
+insertAt n a = uncurry (++) . second ((:) a) . split n
 
+-- P22
 range :: Int -> Int -> [Int]
 range n m = [n..m]
 
